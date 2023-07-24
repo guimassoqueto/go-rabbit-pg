@@ -1,10 +1,10 @@
 package rabbitmq
 
 import (
-	"log"
 	"grp/helpers"
+	"grp/scraper"
 	"grp/variables"
-	"grp/postgres"
+	"log"
 
 	ampq "github.com/rabbitmq/amqp091-go"
 )
@@ -44,12 +44,14 @@ func Receive() {
 
 	go func() {
 		for d := range msgs {
-			log.Printf("Received a message: %s", d.Body)
-			pg.InsertMessage(string(d.Body[:]))
+			message := string(d.Body[:])
+			log.Println("New item(s) received")
+			pidsArray := helpers.StringifiedArrayToArray(message)
+			scraper.GoColly(pidsArray)
 		}
 	}()
 
-	log.Printf(" [*] Waiting for messages. to exit press CTRL+C")
+	log.Printf(" [*] Waiting for item(s)...")
 
 	<-forever
 }
