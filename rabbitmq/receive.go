@@ -45,13 +45,13 @@ func Receive() {
 	go func() {
 		for d := range msgs {
 			message := string(d.Body[:])
-			log.Printf("Received a message: %s", message)
+			log.Println("New item(s) received")
 			pidsArray := helpers.StringifiedArrayToArray(message)
 			scraper.GoColly(pidsArray)
 		}
 	}()
 
-	log.Printf(" [*] Waiting for messages. to exit press CTRL+C")
+	log.Printf(" [*] Waiting for item(s)...")
 
 	<-forever
 }
