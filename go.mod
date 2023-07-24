@@ -3,15 +3,14 @@ module grp
 go 1.20
 
 require (
+	github.com/EDDYCJY/fake-useragent v0.2.0
 	github.com/gocolly/colly v1.2.0
-	github.com/guimassoqueto/go-fake-headers v0.0.0-20230722154754-58a437302617
 	github.com/joho/godotenv v1.5.1
 	github.com/lib/pq v1.10.9
 	github.com/rabbitmq/amqp091-go v1.8.1
 )
 
 require (
-	github.com/EDDYCJY/fake-useragent v0.2.0 // indirect
 	github.com/PuerkitoBio/goquery v1.8.1 // indirect
 	github.com/andybalholm/cascadia v1.3.2 // indirect
 	github.com/antchfx/htmlquery v1.3.0 // indirect
