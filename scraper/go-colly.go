@@ -16,6 +16,15 @@ import (
 	"github.com/gocolly/colly"
 )
 
+func getBiggestImage(e *colly.HTMLElement, attr string) string {
+	var imageUrl string = "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
+	if e.Attr(attr) != "" {
+		var availableImages []string = helpers.StringfiedJsonKeysToArray(e.Attr(attr))
+		imageUrl = availableImages[len(availableImages) - 1]
+	}
+	return imageUrl
+}
+
 func GoColly(pidsArray []string) {
 	log.Printf("Scraping %d items on Amazon, please wait...", len(pidsArray))
 	defer log.Printf("Item(s) inserted into database. Waiting for new messages...")
@@ -40,6 +49,7 @@ func GoColly(pidsArray []string) {
 				category string = "Not Definded"
 				reviews int = 0
 				freeShipping bool = false
+				imageUrl string = "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
 			)
 
 			c := colly.NewCollector()
@@ -77,6 +87,27 @@ func GoColly(pidsArray []string) {
 					freeShipping = true
 				}
 			})
+			//IMAGE-URL
+			c.OnHTML("img.a-dynamic-image", func(e *colly.HTMLElement) {
+				if e.Attr("data-old-hires") != "" {
+					imageUrl = e.Attr("data-old-hires")
+				}
+			})
+			c.OnHTML("#landingImage", func(e *colly.HTMLElement) {
+				if e.Attr("data-old-hires") != "" {
+					imageUrl = e.Attr("data-old-hires")
+				} else {
+					imageUrl = getBiggestImage(e, "data-a-dynamic-image")
+				}
+			})
+			c.OnHTML("#ebooksImgBlkFront", func(e *colly.HTMLElement) {
+				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
+			})
+			c.OnHTML("#imgBlkFront", func(e *colly.HTMLElement) {
+				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
+			})
+			
+
 
 			c.OnError(func(r *colly.Response, err error) {
 				log.Printf("Error while scraping an item: %s", err.Error())
@@ -89,6 +120,7 @@ func GoColly(pidsArray []string) {
 					Category: category,
 					Reviews: reviews,
 					Free_Shipping: freeShipping,
+					Image_Url: imageUrl,
 				}
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
 				fmt.Printf("OK: %v", product)

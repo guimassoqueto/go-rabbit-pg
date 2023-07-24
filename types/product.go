@@ -6,4 +6,5 @@ type Product struct {
 	Category string
 	Reviews int
 	Free_Shipping bool
+	Image_Url string
 }

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 )
+
 func convertInterfaceToStringSlice(input []interface{}) []string {
 	output := make([]string, len(input))
 	for i, val := range input {
