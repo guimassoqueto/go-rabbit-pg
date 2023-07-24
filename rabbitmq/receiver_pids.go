@@ -9,7 +9,7 @@ import (
 	ampq "github.com/rabbitmq/amqp091-go"
 )
 
-func Receive() {
+func ReceiverPids() {
 	conn, err := ampq.Dial(variables.RABBITMQ_URL)
 	helpers.FailOnError(err, "Failed to connect to RabbitMQ")
 	defer conn.Close()
