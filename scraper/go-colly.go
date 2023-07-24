@@ -7,86 +7,81 @@ import (
 	"sync"
 	"time"
 
-	"grp/postgres"
+	"grp/elements"
+	"grp/helpers"
+	pg "grp/postgres"
 	"grp/types"
 	"grp/variables"
-	"grp/elements"
 
 	"github.com/gocolly/colly"
-	randomHeader "github.com/guimassoqueto/go-fake-headers"
 )
 
 func GoColly(pidsArray []string) {
-	var (
-		title string
-		category string = "Not Defined"
-	)
+	log.Printf("Scraping %d items on Amazon, please wait...", len(pidsArray))
+	defer log.Printf("Item(s) inserted into database. Waiting for new messages...")
+	
+	concurrentScrapes := 32
+	urlsChannel := make(chan string, len(pidsArray))
+
+	for _, url := range pidsArray {
+		urlsChannel <- fmt.Sprintf("https://amazon.com.br/dp/%s", url)
+	}
+	close(urlsChannel)
 
 	var wg sync.WaitGroup
+	wg.Add(concurrentScrapes)
 
-	concurrentLinks := make(chan string, 32)
+	for i := 0; i < concurrentScrapes; i++ {
+		go func() {
+			defer wg.Done()
 
-	c := colly.NewCollector(
-		colly.AllowedDomains(),
-		colly.IgnoreRobotsTxt(),
-	)
+			var (
+				title string = "Not Defined"
+				category string = "Not Definded"
+				reviews int = 0
+			)
 
-	c.SetRequestTimeout(60 * time.Second)
+			c := colly.NewCollector()
+			c.SetRequestTimeout(60 * time.Second)
 
-	c.OnRequest(func(r *colly.Request) {
-		fakeHeader := randomHeader.Build()
-		for key, value := range fakeHeader {
-			r.Headers.Set(key, value)
-		}
-	})
+			c.OnRequest(func(r *colly.Request) {
+				fakeHeader := helpers.RandomHeader()
+				for key, value := range fakeHeader {
+					r.Headers.Set(key, value)
+				}
+			})
 
-	// PRODUCT TITLE
-	c.OnHTML("#title", func(e *colly.HTMLElement) {
-		title = strings.ReplaceAll(strings.Trim(e.Text, " "), "'", "''")
-		wg.Done()
-	})
+			c.OnHTML("#title", func(e *colly.HTMLElement) {
+				title = strings.ReplaceAll(strings.Trim(e.Text, " "), "'", "''")
+			})
 
-	// PRODUCT CATEGORY
-	c.OnHTML("#wayfinding-breadcrumbs_container", func(e *colly.HTMLElement) {
-		category = elements.GetCategory(e)
-	})
+			c.OnHTML("#wayfinding-breadcrumbs_container", func(e *colly.HTMLElement) {
+				category = elements.GetCategory(e.Text)
+			})
 
-	c.OnError(func(r *colly.Response, err error) {
-		log.Println("Request URL:", r.Request.URL, "failed with response:", r, "\nError:", err)
-		wg.Done()
-	})
+			c.OnHTML("#acrCustomerReviewText", func(e *colly.HTMLElement) {
+				reviews = elements.GetReviews(e.Text)
+			})
 
-	c.OnScraped(func(r *colly.Response) {
-		product := types.Product{
-			Id:    r.Request.URL.String(), // PRODUCT ID (ASIN)
-			Title: title,
-			Category: category,
-		}
-		pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
-		log.Printf("OK: %s", product)	
-	})
+			c.OnError(func(r *colly.Response, err error) {
+				log.Printf("Error while scraping an item: %s", err.Error())
+			})
+			
+			c.OnScraped(func(r *colly.Response) {
+				product := types.Product{
+					Id: r.Request.URL.String(),
+					Title: title,
+					Category: category,
+					Reviews: reviews,
+				}
+				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
+				fmt.Printf("OK: %v", product)
+			})
 
-	// Start Goroutines for each URL
-	for _, url := range pidsArray {
-		wg.Add(1) // Increment the WaitGroup counter for each URL
-
-		// Send the URL to the worker pool for processing
-		concurrentLinks <- url
-
-		go func(u string) {
-			// Defer the removal of the URL from the worker pool
-			defer func() { <-concurrentLinks }()
-
-			// Make the request using Colly
-			err := c.Visit(u)
-			if err != nil {
-				log.Println("Error visiting URL:", u, "\nError:", err)
-				return
+			for url := range urlsChannel {
+				c.Visit(url)
 			}
-		}(fmt.Sprintf("https://amazon.com.br/dp/%s", url))
+		}()
 	}
-
-	// Wait for all Goroutines to finish
 	wg.Wait()
-	close(concurrentLinks)
 }
