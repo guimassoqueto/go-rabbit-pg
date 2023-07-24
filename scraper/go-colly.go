@@ -7,9 +7,10 @@ import (
 	"sync"
 	"time"
 
-	//"grp/postgres"
+	"grp/postgres"
 	"grp/types"
-	//"grp/variables"
+	"grp/variables"
+	"grp/elements"
 
 	"github.com/gocolly/colly"
 	randomHeader "github.com/guimassoqueto/go-fake-headers"
@@ -18,6 +19,7 @@ import (
 func GoColly(pidsArray []string) {
 	var (
 		title string
+		category string = "Not Defined"
 	)
 
 	var wg sync.WaitGroup
@@ -38,9 +40,15 @@ func GoColly(pidsArray []string) {
 		}
 	})
 
+	// PRODUCT TITLE
 	c.OnHTML("#title", func(e *colly.HTMLElement) {
 		title = strings.ReplaceAll(strings.Trim(e.Text, " "), "'", "''")
 		wg.Done()
+	})
+
+	// PRODUCT CATEGORY
+	c.OnHTML("#wayfinding-breadcrumbs_container", func(e *colly.HTMLElement) {
+		category = elements.GetCategory(e)
 	})
 
 	c.OnError(func(r *colly.Response, err error) {
@@ -50,11 +58,12 @@ func GoColly(pidsArray []string) {
 
 	c.OnScraped(func(r *colly.Response) {
 		product := types.Product{
-			Id:    r.Request.URL.String(),
+			Id:    r.Request.URL.String(), // PRODUCT ID (ASIN)
 			Title: title,
+			Category: category,
 		}
-		// pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
-		log.Printf("OK: %s", product)
+		pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
+		log.Printf("OK: %s", product)	
 	})
 
 	// Start Goroutines for each URL
