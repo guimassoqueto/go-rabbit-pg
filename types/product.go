@@ -7,4 +7,5 @@ type Product struct {
 	Reviews int
 	Free_Shipping bool
 	Image_Url string
+	Discount int
 }

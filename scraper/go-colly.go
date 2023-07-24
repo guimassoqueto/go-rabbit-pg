@@ -3,6 +3,8 @@ package scraper
 import (
 	"fmt"
 	"log"
+	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -23,6 +25,17 @@ func getBiggestImage(e *colly.HTMLElement, attr string) string {
 		imageUrl = availableImages[len(availableImages) - 1]
 	}
 	return imageUrl
+}
+
+func convertDiscountToInteger(eText string) int {
+	regex, _ := regexp.Compile(`\d+%`)
+	match := regex.FindString(eText)
+	percentageRemoved := strings.ReplaceAll(match, "%", "")
+	discount, err := strconv.Atoi(percentageRemoved)
+	if err != nil {
+		return 0
+	}
+	return discount
 }
 
 func GoColly(pidsArray []string) {
@@ -50,6 +63,7 @@ func GoColly(pidsArray []string) {
 				reviews int = 0
 				freeShipping bool = false
 				imageUrl string = "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
+				discount int = 0
 			)
 
 			c := colly.NewCollector()
@@ -87,7 +101,7 @@ func GoColly(pidsArray []string) {
 					freeShipping = true
 				}
 			})
-			//IMAGE-URL
+			// IMAGE-URL
 			c.OnHTML("img.a-dynamic-image", func(e *colly.HTMLElement) {
 				if e.Attr("data-old-hires") != "" {
 					imageUrl = e.Attr("data-old-hires")
@@ -106,8 +120,19 @@ func GoColly(pidsArray []string) {
 			c.OnHTML("#imgBlkFront", func(e *colly.HTMLElement) {
 				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
 			})
-			
-
+			// DISCOUNT
+			c.OnHTML(".savingPriceOverride", func(e *colly.HTMLElement) {
+				discount = convertDiscountToInteger(e.Text)
+			})
+			c.OnHTML("#savingsPercentage", func(e *colly.HTMLElement) {
+				discount = convertDiscountToInteger(e.Text)
+			})
+			c.OnHTML("p.ebooks-price-savings", func(e *colly.HTMLElement) {
+				discount = convertDiscountToInteger(e.Text)
+			})
+			c.OnHTML("tr>td.a-span12.a-color-price.a-size-base>span.a-color-price", func(e *colly.HTMLElement) {
+				discount = convertDiscountToInteger(e.Text)
+			})
 
 			c.OnError(func(r *colly.Response, err error) {
 				log.Printf("Error while scraping an item: %s", err.Error())
@@ -121,9 +146,10 @@ func GoColly(pidsArray []string) {
 					Reviews: reviews,
 					Free_Shipping: freeShipping,
 					Image_Url: imageUrl,
+					Discount: discount,
 				}
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
-				fmt.Printf("OK: %v", product)
+				log.Printf("OK: %v", product)
 			})
 
 			for url := range urlsChannel {
