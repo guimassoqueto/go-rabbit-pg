@@ -39,6 +39,7 @@ func GoColly(pidsArray []string) {
 				title string = "Not Defined"
 				category string = "Not Definded"
 				reviews int = 0
+				freeShipping bool = false
 			)
 
 			c := colly.NewCollector()
@@ -50,17 +51,31 @@ func GoColly(pidsArray []string) {
 					r.Headers.Set(key, value)
 				}
 			})
-
+			// TITLE
 			c.OnHTML("#title", func(e *colly.HTMLElement) {
 				title = strings.ReplaceAll(strings.Trim(e.Text, " "), "'", "''")
 			})
-
+			// CATEGORY
 			c.OnHTML("#wayfinding-breadcrumbs_container", func(e *colly.HTMLElement) {
 				category = elements.GetCategory(e.Text)
 			})
-
+			// REVIEWS
 			c.OnHTML("#acrCustomerReviewText", func(e *colly.HTMLElement) {
 				reviews = elements.GetReviews(e.Text)
+			})
+			// FREE-SHIPPING
+			c.OnHTML("#primeSavingsUpsellCaption_feature_div", func(e *colly.HTMLElement) { freeShipping = true })
+			c.OnHTML("div.tabular-buybox-text:nth-child(4)>div:nth-child(1)>span:nth-child(1)", func(e *colly.HTMLElement) {
+				innerText := strings.ToLower(e.Text)
+				if strings.Contains(innerText, "amazon") {
+					freeShipping = true
+				}
+			})
+			c.OnHTML("div#mir-layout-DELIVERY_BLOCK-slot-PRIMARY_DELIVERY_MESSAGE_LARGE>span", func(e *colly.HTMLElement) {
+				innerText := strings.ToLower(e.Text)
+				if strings.Contains(innerText, "grátis") {
+					freeShipping = true
+				}
 			})
 
 			c.OnError(func(r *colly.Response, err error) {
@@ -73,6 +88,7 @@ func GoColly(pidsArray []string) {
 					Title: title,
 					Category: category,
 					Reviews: reviews,
+					Free_Shipping: freeShipping,
 				}
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
 				fmt.Printf("OK: %v", product)

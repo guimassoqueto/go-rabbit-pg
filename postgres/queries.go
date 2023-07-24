@@ -37,8 +37,8 @@ func UpsertQuery(table string, product types.Product) string {
 			values += fmt.Sprintf("%.2f,", value)
 			onConflict += fmt.Sprintf("%s = %.2f,", key, value)
 		} else {
-			values += fmt.Sprintf("%d,", value)
-			onConflict += fmt.Sprintf("%s = %d,", key, value)
+			values += fmt.Sprintf("%v,", value)
+			onConflict += fmt.Sprintf("%s = %v,", key, value)
 		}
 	}
 
