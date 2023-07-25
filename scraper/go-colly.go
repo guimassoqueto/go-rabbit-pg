@@ -45,7 +45,7 @@ func priceToFloat(eText string) float32 {
 	commaToDot := strings.ReplaceAll(removedDots, ",", ".")
 	floatPrice, error := strconv.ParseFloat(commaToDot, 32)
 	if error != nil {
-		return 0.0
+		return 0
 	}
 	return float32(floatPrice)
 }
@@ -77,6 +77,7 @@ func GoColly(pidsArray []string) {
 				imageUrl string = "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
 				discount int = 0
 				price float32 = 0
+				previous_price float32 = 0
 			)
 
 			c := colly.NewCollector()
@@ -150,11 +151,22 @@ func GoColly(pidsArray []string) {
 			c.OnHTML("#corePrice_feature_div", func(e *colly.HTMLElement) {
 				price = priceToFloat(e.Text)
 			})
+			c.OnHTML(".reinventPriceAccordionT2>.a-offscreen", func(e *colly.HTMLElement) {
+				// this is an subelement of #corePrice_feature_div
+				price = priceToFloat(e.Text)
+			})
 			c.OnHTML("#price", func(e *colly.HTMLElement) {
 				price = priceToFloat(e.Text)
 			})
 			c.OnHTML("#kindle-price", func(e *colly.HTMLElement) {
 				price = priceToFloat(e.Text)
+			})
+			// PREVIOUS PRICE
+			c.OnHTML(".basisPrice", func(e *colly.HTMLElement) {
+				previous_price = priceToFloat(e.Text)
+			})
+			c.OnHTML("#listPrice", func(e *colly.HTMLElement) {
+				previous_price = priceToFloat(e.Text)
 			})
 
 
@@ -172,9 +184,9 @@ func GoColly(pidsArray []string) {
 					Image_Url: imageUrl,
 					Discount: discount,
 					Price: price,
+					Previous_Price: previous_price,
 				}
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
-				log.Printf("OK: %v", product)
 			})
 
 			for url := range urlsChannel {
