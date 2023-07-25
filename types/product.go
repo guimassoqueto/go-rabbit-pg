@@ -8,4 +8,6 @@ type Product struct {
 	Free_Shipping bool
 	Image_Url string
 	Discount int
+	Price float32
+	Previous_Price float32
 }

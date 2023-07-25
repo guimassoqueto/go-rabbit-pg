@@ -38,6 +38,18 @@ func convertDiscountToInteger(eText string) int {
 	return discount
 }
 
+func priceToFloat(eText string) float32 {
+	regex, _ := regexp.Compile(`[\d\,\.]+`)
+	match := regex.FindString(eText)
+	removedDots := strings.ReplaceAll(match, ".", "")
+	commaToDot := strings.ReplaceAll(removedDots, ",", ".")
+	floatPrice, error := strconv.ParseFloat(commaToDot, 32)
+	if error != nil {
+		return 0
+	}
+	return float32(floatPrice)
+}
+
 func GoColly(pidsArray []string) {
 	log.Printf("Scraping %d items on Amazon, please wait...", len(pidsArray))
 	defer log.Printf("Item(s) inserted into database. Waiting for new messages...")
@@ -59,11 +71,13 @@ func GoColly(pidsArray []string) {
 
 			var (
 				title string = "Not Defined"
-				category string = "Not Definded"
+				category string = "Not Defined"
 				reviews int = 0
 				freeShipping bool = false
 				imageUrl string = "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
 				discount int = 0
+				price float32 = 0
+				previous_price float32 = 0
 			)
 
 			c := colly.NewCollector()
@@ -102,6 +116,12 @@ func GoColly(pidsArray []string) {
 				}
 			})
 			// IMAGE-URL
+			c.OnHTML("#ebooksImgBlkFront", func(e *colly.HTMLElement) {
+				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
+			})
+			c.OnHTML("#imgBlkFront", func(e *colly.HTMLElement) {
+				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
+			})
 			c.OnHTML("img.a-dynamic-image", func(e *colly.HTMLElement) {
 				if e.Attr("data-old-hires") != "" {
 					imageUrl = e.Attr("data-old-hires")
@@ -113,12 +133,6 @@ func GoColly(pidsArray []string) {
 				} else {
 					imageUrl = getBiggestImage(e, "data-a-dynamic-image")
 				}
-			})
-			c.OnHTML("#ebooksImgBlkFront", func(e *colly.HTMLElement) {
-				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
-			})
-			c.OnHTML("#imgBlkFront", func(e *colly.HTMLElement) {
-				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
 			})
 			// DISCOUNT
 			c.OnHTML(".savingPriceOverride", func(e *colly.HTMLElement) {
@@ -133,6 +147,28 @@ func GoColly(pidsArray []string) {
 			c.OnHTML("tr>td.a-span12.a-color-price.a-size-base>span.a-color-price", func(e *colly.HTMLElement) {
 				discount = convertDiscountToInteger(e.Text)
 			})
+			// PRICE
+			c.OnHTML("#corePrice_feature_div", func(e *colly.HTMLElement) {
+				price = priceToFloat(e.Text)
+			})
+			c.OnHTML(".reinventPriceAccordionT2>.a-offscreen", func(e *colly.HTMLElement) {
+				// this is an subelement of #corePrice_feature_div
+				price = priceToFloat(e.Text)
+			})
+			c.OnHTML("#price", func(e *colly.HTMLElement) {
+				price = priceToFloat(e.Text)
+			})
+			c.OnHTML("#kindle-price", func(e *colly.HTMLElement) {
+				price = priceToFloat(e.Text)
+			})
+			// PREVIOUS PRICE
+			c.OnHTML(".basisPrice", func(e *colly.HTMLElement) {
+				previous_price = priceToFloat(e.Text)
+			})
+			c.OnHTML("#listPrice", func(e *colly.HTMLElement) {
+				previous_price = priceToFloat(e.Text)
+			})
+
 
 			c.OnError(func(r *colly.Response, err error) {
 				log.Printf("Error while scraping an item: %s", err.Error())
@@ -147,9 +183,10 @@ func GoColly(pidsArray []string) {
 					Free_Shipping: freeShipping,
 					Image_Url: imageUrl,
 					Discount: discount,
+					Price: price,
+					Previous_Price: previous_price,
 				}
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
-				log.Printf("OK: %v", product)
 			})
 
 			for url := range urlsChannel {
