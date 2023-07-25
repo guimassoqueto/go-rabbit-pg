@@ -19,7 +19,7 @@ func Receive() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		variables.RABBITMQ_MAIN_QUEUE, // name
+		variables.RABBITMQ_RECEIVER_QUEUE, // name
 		false, // durable
 		false, // delete when unusued
 		false, // exclusive

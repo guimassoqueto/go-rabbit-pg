@@ -23,7 +23,7 @@ func Send(message string) {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		variables.RABBITMQ_MAIN_QUEUE, // name
+		variables.RABBITMQ_SENDER_QUEUE, // name
 		false, // durable
 		false, // delete when unusues
 		false, // exclusive
