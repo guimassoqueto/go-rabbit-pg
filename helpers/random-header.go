@@ -89,7 +89,7 @@ func RandomHeader() map[string]string {
 	fakeHeader["Sec-Fetch-Mode"] = "navigate"
 	fakeHeader["Sec-Fetch-Site"] = "none"
 	fakeHeader["Sec-Fetch-User"] = "?1"
-	fakeHeader["User-Agent"] = browser.Computer()
+	fakeHeader["User-Agent"] = browser.Firefox()
 	fakeHeader["Referer"] = "https =//google.com/"
 
 	return fakeHeader
