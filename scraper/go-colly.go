@@ -3,9 +3,6 @@ package scraper
 import (
 	"fmt"
 	"log"
-	"regexp"
-	"strconv"
-	"strings"
 	"sync"
 	"time"
 
@@ -18,43 +15,12 @@ import (
 	"github.com/gocolly/colly"
 )
 
-func getBiggestImage(e *colly.HTMLElement, attr string) string {
-	var imageUrl string = "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
-	if e.Attr(attr) != "" {
-		var availableImages []string = helpers.StringfiedJsonKeysToArray(e.Attr(attr))
-		imageUrl = availableImages[len(availableImages) - 1]
-	}
-	return imageUrl
-}
-
-func convertDiscountToInteger(eText string) int {
-	regex, _ := regexp.Compile(`\d+%`)
-	match := regex.FindString(eText)
-	percentageRemoved := strings.ReplaceAll(match, "%", "")
-	discount, err := strconv.Atoi(percentageRemoved)
-	if err != nil {
-		return 0
-	}
-	return discount
-}
-
-func priceToFloat(eText string) float32 {
-	regex, _ := regexp.Compile(`[\d\,\.]+`)
-	match := regex.FindString(eText)
-	removedDots := strings.ReplaceAll(match, ".", "")
-	commaToDot := strings.ReplaceAll(removedDots, ",", ".")
-	floatPrice, error := strconv.ParseFloat(commaToDot, 32)
-	if error != nil {
-		return 0
-	}
-	return float32(floatPrice)
-}
 
 func GoColly(pidsArray []string) {
 	log.Printf("Scraping %d items on Amazon, please wait...", len(pidsArray))
 	defer log.Printf("Item(s) inserted into database. Waiting for new messages...")
 	
-	concurrentScrapes := 32
+	concurrentScrapes := 16
 	urlsChannel := make(chan string, len(pidsArray))
 
 	for _, url := range pidsArray {
@@ -70,14 +36,13 @@ func GoColly(pidsArray []string) {
 			defer wg.Done()
 
 			var (
-				title string = "Not Defined"
-				category string = "Not Defined"
-				reviews int = 0
-				freeShipping bool = false
-				imageUrl string = "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
-				discount int = 0
-				price float32 = 0
-				previous_price float32 = 0
+				muTitle         sync.Mutex
+				muCategory      sync.Mutex
+				muReviews       sync.Mutex
+				muFreeShipping  sync.Mutex
+				muImageUrl      sync.Mutex
+				muPrice         sync.Mutex
+				muPreviousPrice sync.Mutex
 			)
 
 			c := colly.NewCollector()
@@ -89,104 +54,66 @@ func GoColly(pidsArray []string) {
 					r.Headers.Set(key, value)
 				}
 			})
-			// TITLE
-			c.OnHTML("#title", func(e *colly.HTMLElement) {
-				title = strings.ReplaceAll(strings.Trim(e.Text, " "), "'", "''")
-			})
-			// CATEGORY
-			c.OnHTML("#wayfinding-breadcrumbs_container", func(e *colly.HTMLElement) {
-				category = elements.GetCategory(e.Text)
-			})
-			// REVIEWS
-			c.OnHTML("#acrCustomerReviewText", func(e *colly.HTMLElement) {
-				reviews = elements.GetReviews(e.Text)
-			})
-			// FREE-SHIPPING
-			c.OnHTML("#primeSavingsUpsellCaption_feature_div", func(e *colly.HTMLElement) { freeShipping = true })
-			c.OnHTML("div.tabular-buybox-text:nth-child(4)>div:nth-child(1)>span:nth-child(1)", func(e *colly.HTMLElement) {
-				innerText := strings.ToLower(e.Text)
-				if strings.Contains(innerText, "amazon") {
-					freeShipping = true
-				}
-			})
-			c.OnHTML("div#mir-layout-DELIVERY_BLOCK-slot-PRIMARY_DELIVERY_MESSAGE_LARGE>span", func(e *colly.HTMLElement) {
-				innerText := strings.ToLower(e.Text)
-				if strings.Contains(innerText, "grátis") {
-					freeShipping = true
-				}
-			})
-			// IMAGE-URL
-			c.OnHTML("#ebooksImgBlkFront", func(e *colly.HTMLElement) {
-				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
-			})
-			c.OnHTML("#imgBlkFront", func(e *colly.HTMLElement) {
-				imageUrl = getBiggestImage(e, "data-a-dynamic-image")
-			})
-			c.OnHTML("img.a-dynamic-image", func(e *colly.HTMLElement) {
-				if e.Attr("data-old-hires") != "" {
-					imageUrl = e.Attr("data-old-hires")
-				}
-			})
-			c.OnHTML("#landingImage", func(e *colly.HTMLElement) {
-				if e.Attr("data-old-hires") != "" {
-					imageUrl = e.Attr("data-old-hires")
-				} else {
-					imageUrl = getBiggestImage(e, "data-a-dynamic-image")
-				}
-			})
-			// DISCOUNT
-			c.OnHTML(".savingPriceOverride", func(e *colly.HTMLElement) {
-				discount = convertDiscountToInteger(e.Text)
-			})
-			c.OnHTML("#savingsPercentage", func(e *colly.HTMLElement) {
-				discount = convertDiscountToInteger(e.Text)
-			})
-			c.OnHTML("p.ebooks-price-savings", func(e *colly.HTMLElement) {
-				discount = convertDiscountToInteger(e.Text)
-			})
-			c.OnHTML("tr>td.a-span12.a-color-price.a-size-base>span.a-color-price", func(e *colly.HTMLElement) {
-				discount = convertDiscountToInteger(e.Text)
-			})
-			// PRICE
-			c.OnHTML("#corePrice_feature_div", func(e *colly.HTMLElement) {
-				price = priceToFloat(e.Text)
-			})
-			c.OnHTML(".reinventPriceAccordionT2>.a-offscreen", func(e *colly.HTMLElement) {
-				// this is an subelement of #corePrice_feature_div
-				price = priceToFloat(e.Text)
-			})
-			c.OnHTML("#price", func(e *colly.HTMLElement) {
-				price = priceToFloat(e.Text)
-			})
-			c.OnHTML("#kindle-price", func(e *colly.HTMLElement) {
-				price = priceToFloat(e.Text)
-			})
-			// PREVIOUS PRICE
-			c.OnHTML(".basisPrice", func(e *colly.HTMLElement) {
-				previous_price = priceToFloat(e.Text)
-			})
-			c.OnHTML("#listPrice", func(e *colly.HTMLElement) {
-				previous_price = priceToFloat(e.Text)
-			})
 
+			muTitle.Lock()
+			title := "Not Defined"
+			elements.GetTitle(c, &title)
+			muTitle.Unlock()
 
-			c.OnError(func(r *colly.Response, err error) {
-				log.Printf("Error while scraping an item: %s", err.Error())
-			})
+			muCategory.Lock()
+			category := ""
+			elements.GetCategory(c, &category)
+			muCategory.Unlock()
+
+			muReviews.Lock()
+			reviews := 0
+			elements.GetReviews(c, &reviews)
+			muReviews.Unlock()
+
+			muFreeShipping.Lock()
+			freeShipping := false
+			elements.GetFreeShipping(c, &freeShipping)
+			muFreeShipping.Unlock()
+
+			muImageUrl.Lock()
+			imageUrl := "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
+			elements.GetImageUrl(c, &imageUrl)
+			muImageUrl.Unlock()
+
+			muPrice.Lock()
+			price := float32(0)
+			elements.GetPrice(c, &price)
+			muPrice.Unlock()
+
+			muPreviousPrice.Lock()
+			previousPrice := float32(0)
+			elements.GetPreviousPrice(c, &previousPrice)
+			muPreviousPrice.Unlock()
 			
+
 			c.OnScraped(func(r *colly.Response) {
+				previousPrice = elements.ComparePricesAndGetPreviousPrice(price, previousPrice)
 				product := types.Product{
 					Id: r.Request.URL.String(),
 					Title: title,
 					Category: category,
 					Reviews: reviews,
-					Free_Shipping: freeShipping,
+					Free_Shipping: elements.CheckFreeShipping(freeShipping, category),
 					Image_Url: imageUrl,
-					Discount: discount,
+					Discount: elements.GetDiscount(price, previousPrice),
 					Price: price,
-					Previous_Price: previous_price,
+					Previous_Price: previousPrice, //elements.GetPreviousPrice(price, discount)
 				}
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
+				// fmt.Printf("\nTITLE: %s\n", product.Title)
+				// fmt.Printf("ID: %s\n", product.Id)
+				// fmt.Printf("FREE SHIPPING: %v\n", product.Free_Shipping)
+				// fmt.Printf("IMAGE: %s\n", product.Image_Url)
+				// fmt.Printf("CATEGORY: %s\n", product.Category)
+				// fmt.Printf("REVIEWS: %d\n", product.Reviews)
+				// fmt.Printf("DISCOUNT: %d\n", product.Discount)
+				// fmt.Printf("PRICE: %f\n", product.Price)
+				// fmt.Printf("PREVIOUS PRICE: %f\n\n", product.Previous_Price)
 			})
 
 			for url := range urlsChannel {
