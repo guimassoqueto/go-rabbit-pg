@@ -7,8 +7,6 @@ import (
 	"strings"
 )
 
-var Test string = "abc"
-
 func UpsertQuery(table string, product types.Product) string {
 	var insert string
 	var values string

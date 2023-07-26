@@ -1,7 +1,8 @@
 package main
 
-import "grp/rabbitmq"
-
+import (
+	"grp/rabbitmq"
+)
 
 func main() {
 	rabbitmq.Receive()
