@@ -4,9 +4,11 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/gocolly/colly"
 )
 
-func GetReviews(eText string) int {
+func extractReviews(eText string) int {
 	regex, _ := regexp.Compile(`[\d\.]+`)
 	match := regex.FindString(eText)
 	removedDots := strings.ReplaceAll(match, ".", "")
@@ -15,4 +17,10 @@ func GetReviews(eText string) int {
 		return 0
 	}
 	return reviews
+}
+
+func GetReviews(c *colly.Collector, reviews *int) {
+	c.OnHTML("#acrCustomerReviewText", func(e *colly.HTMLElement) {
+		*reviews = extractReviews(e.Text)
+	})
 }
