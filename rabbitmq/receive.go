@@ -48,6 +48,7 @@ func Receive() {
 			log.Println("New item(s) received")
 			pidsArray := helpers.StringifiedArrayToArray(message)
 			scraper.GoColly(pidsArray)
+			Send("items updated")
 		}
 	}()
 
