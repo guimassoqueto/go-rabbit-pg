@@ -85,18 +85,13 @@ func GoColly(pidsArray []string) {
 					Price: price,
 					Previous_Price: previousPrice, //elements.GetPreviousPrice(price, discount)
 				}
-				if product.Price != 0 {
-					pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
+				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))	
 					
-					fmt.Printf("\nID: %s\n", product.Id)
-					fmt.Printf("PRICE: %f\n", product.Price)
-					fmt.Printf("PREVIOUS: %f\n", product.Previous_Price)
-				
-				} else {
-					fmt.Printf("\nID: %s\n", product.Id)
-					fmt.Printf("PRICE: %f\n", product.Price)
-					fmt.Printf("PREVIOUS: %f\n", product.Previous_Price)
-				}
+				fmt.Printf("\nID: %s\n", product.Id)
+				fmt.Printf("TITLE: %s\n", product.Title)
+				fmt.Printf("PRICE: %f\n", product.Price)
+				fmt.Printf("PREVIOUS: %f\n", product.Previous_Price)
+				fmt.Printf("DISCOUNT: %d\n\n", product.Discount)
 				mu.Unlock()
 			})
 

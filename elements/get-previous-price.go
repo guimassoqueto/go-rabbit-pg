@@ -4,6 +4,7 @@ import (
 	"github.com/gocolly/colly"
 )
 
+
 func ComparePricesAndGetPreviousPrice(price float32, previousPrice float32) float32 {
 	if price > previousPrice  {
 		return price
@@ -12,32 +13,32 @@ func ComparePricesAndGetPreviousPrice(price float32, previousPrice float32) floa
 }
 
 func GetPreviousPrice(c *colly.Collector, previousPrice *float32) {
-	var temp float32 = 0
-
-	// PADRÃO
+	firstOccurrenceProcessed := false
+	// PADRAO
 	c.OnHTML(".basisPrice", func(e *colly.HTMLElement) {
-		temp = priceToFloat(e.Text)
-		*previousPrice = temp
+		subElement := e.DOM.Find("span.a-offscreen").First()
+		if !firstOccurrenceProcessed {
+			*previousPrice = priceToFloat(subElement.Text())
+			firstOccurrenceProcessed = true
+		}
 	})
+
 	// EBOOKS
 	c.OnHTML("#digital-list-price", func(e *colly.HTMLElement) {
-		if temp == 0 {
-			temp = priceToFloat(e.Text)
-			*previousPrice = temp
-		}
+		*previousPrice = priceToFloat(e.Text)
 	})
+
 	// TABELA
-	c.OnHTML("tbody>tr>td>span>span.a-offscreen", func(e *colly.HTMLElement) {
-		if temp == 0 {
-			temp = priceToFloat(e.Text)
-			*previousPrice = temp
+	c.OnHTML("#corePrice_desktop", func(e *colly.HTMLElement) {
+		subElement := e.DOM.Find("span.a-offscreen").First()
+		if !firstOccurrenceProcessed {
+			*previousPrice = priceToFloat(subElement.Text())
+			firstOccurrenceProcessed = true
 		}
 	})
+
 	// LIVROFíSICO
 	c.OnHTML("#listPrice", func(e *colly.HTMLElement) {
-		if temp == 0 {
-			temp = priceToFloat(e.Text)
-			*previousPrice = temp
-		}
+		*previousPrice = priceToFloat(e.Text)
 	})
 }
