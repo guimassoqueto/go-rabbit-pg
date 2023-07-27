@@ -16,9 +16,9 @@ func GetPreviousPrice(c *colly.Collector, previousPrice *float32) {
 	firstOccurrenceProcessed := false
 	// PADRAO
 	c.OnHTML(".basisPrice", func(e *colly.HTMLElement) {
-		subElement := e.DOM.Find("span.a-offscreen").First()
+		subElement := e.DOM.Find("span.a-offscreen").First().Text()
 		if !firstOccurrenceProcessed {
-			*previousPrice = priceToFloat(subElement.Text())
+			*previousPrice = priceToFloat(subElement)
 			firstOccurrenceProcessed = true
 		}
 	})
@@ -30,9 +30,9 @@ func GetPreviousPrice(c *colly.Collector, previousPrice *float32) {
 
 	// TABELA
 	c.OnHTML("#corePrice_desktop", func(e *colly.HTMLElement) {
-		subElement := e.DOM.Find("span.a-offscreen").First()
+		subElement := e.DOM.Find("span.a-offscreen").First().Text()
 		if !firstOccurrenceProcessed {
-			*previousPrice = priceToFloat(subElement.Text())
+			*previousPrice = priceToFloat(subElement)
 			firstOccurrenceProcessed = true
 		}
 	})
