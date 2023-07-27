@@ -15,12 +15,14 @@ import (
 	"github.com/gocolly/colly"
 )
 
+var mu sync.Mutex
+
 
 func GoColly(pidsArray []string) {
 	log.Printf("Scraping %d items on Amazon, please wait...", len(pidsArray))
 	defer log.Printf("Item(s) inserted into database. Waiting for new messages...")
 	
-	concurrentScrapes := 16
+	concurrentScrapes := 24
 	urlsChannel := make(chan string, len(pidsArray))
 
 	for _, url := range pidsArray {
@@ -32,18 +34,8 @@ func GoColly(pidsArray []string) {
 	wg.Add(concurrentScrapes)
 
 	for i := 0; i < concurrentScrapes; i++ {
-		go func() {
+		go func(mu *sync.Mutex) {
 			defer wg.Done()
-
-			var (
-				muTitle         sync.Mutex
-				muCategory      sync.Mutex
-				muReviews       sync.Mutex
-				muFreeShipping  sync.Mutex
-				muImageUrl      sync.Mutex
-				muPrice         sync.Mutex
-				muPreviousPrice sync.Mutex
-			)
 
 			c := colly.NewCollector()
 			c.SetRequestTimeout(60 * time.Second)
@@ -55,44 +47,33 @@ func GoColly(pidsArray []string) {
 				}
 			})
 
-			muTitle.Lock()
-			title := "Not Defined"
-			elements.GetTitle(c, &title)
-			muTitle.Unlock()
-
-			muCategory.Lock()
-			category := ""
-			elements.GetCategory(c, &category)
-			muCategory.Unlock()
-
-			muReviews.Lock()
-			reviews := 0
-			elements.GetReviews(c, &reviews)
-			muReviews.Unlock()
-
-			muFreeShipping.Lock()
-			freeShipping := false
-			elements.GetFreeShipping(c, &freeShipping)
-			muFreeShipping.Unlock()
-
-			muImageUrl.Lock()
-			imageUrl := "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
-			elements.GetImageUrl(c, &imageUrl)
-			muImageUrl.Unlock()
-
-			muPrice.Lock()
-			price := float32(0)
-			elements.GetPrice(c, &price)
-			muPrice.Unlock()
-
-			muPreviousPrice.Lock()
+			mu.Lock()
 			previousPrice := float32(0)
 			elements.GetPreviousPrice(c, &previousPrice)
-			muPreviousPrice.Unlock()
-			
 
+			price := float32(0)
+			elements.GetPrice(c, &price)	
+						
+			title := "Not Defined"
+			elements.GetTitle(c, &title)
+
+			category := ""
+			elements.GetCategory(c, &category)
+
+			reviews := 0
+			elements.GetReviews(c, &reviews)
+
+			freeShipping := false
+			elements.GetFreeShipping(c, &freeShipping)
+
+			imageUrl := "https://raw.githubusercontent.com/guimassoqueto/mocks/main/images/404.webp"
+			elements.GetImageUrl(c, &imageUrl)
+			mu.Unlock()
+			
 			c.OnScraped(func(r *colly.Response) {
-				previousPrice = elements.ComparePricesAndGetPreviousPrice(price, previousPrice)
+				mu.Lock()
+				//previousPrice = elements.ComparePricesAndGetPreviousPrice(price, previousPrice)
+
 				product := types.Product{
 					Id: r.Request.URL.String(),
 					Title: title,
@@ -104,22 +85,25 @@ func GoColly(pidsArray []string) {
 					Price: price,
 					Previous_Price: previousPrice, //elements.GetPreviousPrice(price, discount)
 				}
-				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
-				// fmt.Printf("\nTITLE: %s\n", product.Title)
-				// fmt.Printf("ID: %s\n", product.Id)
-				// fmt.Printf("FREE SHIPPING: %v\n", product.Free_Shipping)
-				// fmt.Printf("IMAGE: %s\n", product.Image_Url)
-				// fmt.Printf("CATEGORY: %s\n", product.Category)
-				// fmt.Printf("REVIEWS: %d\n", product.Reviews)
-				// fmt.Printf("DISCOUNT: %d\n", product.Discount)
-				// fmt.Printf("PRICE: %f\n", product.Price)
-				// fmt.Printf("PREVIOUS PRICE: %f\n\n", product.Previous_Price)
+				if product.Price != 0 {
+					pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
+					
+					fmt.Printf("\nID: %s\n", product.Id)
+					fmt.Printf("PRICE: %f\n", product.Price)
+					fmt.Printf("PREVIOUS: %f\n", product.Previous_Price)
+				
+				} else {
+					fmt.Printf("\nID: %s\n", product.Id)
+					fmt.Printf("PRICE: %f\n", product.Price)
+					fmt.Printf("PREVIOUS: %f\n", product.Previous_Price)
+				}
+				mu.Unlock()
 			})
 
 			for url := range urlsChannel {
 				c.Visit(url)
 			}
-		}()
+		}(&mu)
 	}
 	wg.Wait()
 }
