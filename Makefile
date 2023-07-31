@@ -8,4 +8,7 @@ r:
 	go run .
 
 or:
-	open https://github.com/guimassoqueto/go-rabbit-pg
+	open https://github.com/guimassoqueto/go-rabbit-pig
+
+a:
+	rm out/main && go build -o out/main && ./out/main
