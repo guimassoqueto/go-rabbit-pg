@@ -59,8 +59,7 @@ func goColly(urlCh <-chan string, wg *sync.WaitGroup) {
 				Price:          price,
 				Previous_Price: previousPrice,
 			}
-			fmt.Printf("\nTITLE: %s\nPRICE: %f\n\n", product.Title, product.Price)
-			if product.Discount < 65 || product.Price > 0 {
+			if product.Price > 0 {
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
 			}
 		})
