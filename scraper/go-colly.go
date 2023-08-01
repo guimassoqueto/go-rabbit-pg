@@ -60,7 +60,7 @@ func goColly(urlCh <-chan string, wg *sync.WaitGroup) {
 				Previous_Price: previousPrice,
 			}
 			if product.Price > 0 {
-				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_PRODUCT_TABLE, product))
+				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_ITEMS_TABLE_NAME, product))
 			}
 		})
 		c.Visit(url)
