@@ -71,7 +71,7 @@ func Scrap(pidsArray []string) {
 	log.Printf("Scraping %d items on Amazon, please wait...", len(pidsArray))
 	defer log.Printf("Items insert into database. Waiting for new pids...")
 
-	var maxConcurrentRequests = 24
+	var maxConcurrentRequests = variables.MAX_CONCURRENCY()
 	var wg sync.WaitGroup
 
 	urlCh := make(chan string)
