@@ -32,7 +32,7 @@ func Receive() {
 	msgs, err := ch.Consume(
 		q.Name, // queue
 		"", // consumer
-		true, // auto-ack
+		false, // auto-ack
 		false, //exclusive
 		false, // no-local
 		false, //no-wait
@@ -49,6 +49,7 @@ func Receive() {
 			pidsArray := helpers.StringifiedArrayToArray(message)
 			scraper.Scrap(pidsArray)
 			Send("items updated")
+			d.Ack(false)
 		}
 	}()
 

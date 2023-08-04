@@ -2,7 +2,6 @@ package elements
 
 import (
 	"strings"
-
 	"github.com/gocolly/colly"
 )
 

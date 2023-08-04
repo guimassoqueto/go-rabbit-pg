@@ -32,6 +32,13 @@ func Send(message string) {
 	)
 	helpers.FailOnError(err, "Failed to declare a queue")
 
+	err = ch.Qos(
+		1, // prefetch count
+		0, // prefetch size
+		false, // global
+	)
+	helpers.FailOnError(err, "Failed to set QoS")
+
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -42,6 +49,7 @@ func Send(message string) {
 		false, // mandatory
 		false, // inmediate
 		ampq.Publishing{
+			DeliveryMode: ampq.Persistent,
 			ContentType: "text/plain",
 			Body: []byte(message),
 		},
