@@ -8,6 +8,7 @@ import (
 
 func GetTitle(c *colly.Collector, title *string) {
 	c.OnHTML("#productTitle", func(e *colly.HTMLElement) {
-		*title = strings.ReplaceAll(strings.Trim(e.Text, " "), "'", "''")
+		removedSingleQuotes := strings.ReplaceAll(strings.Trim(e.Text, " "), "'", "''")
+		*title = strings.ReplaceAll(removedSingleQuotes, "\"", "")
 	})
 }
