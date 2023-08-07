@@ -8,4 +8,4 @@ env:
 	cp .env.sample .env
 	 
 a:
-	rm out/main && go build -o out/main && ./out/main
+	echo 123 1> out/main && rm out/main && go build -o out/main && ./out/main
