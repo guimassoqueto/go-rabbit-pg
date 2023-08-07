@@ -4,6 +4,7 @@ import (
 	"grp/rabbitmq"
 )
 
+
 func main() {
 	rabbitmq.Receive()
 }
