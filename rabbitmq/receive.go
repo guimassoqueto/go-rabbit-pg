@@ -1,8 +1,12 @@
 package rabbitmq
 
 import (
+	"encoding/json"
 	"grp/helpers"
 	"grp/scraper"
+
+	//"grp/scraper"
+	"grp/types"
 	"grp/variables"
 	"log"
 
@@ -19,24 +23,23 @@ func Receive() {
 	defer ch.Close()
 
 	q, err := ch.QueueDeclare(
-		variables.RABBITMQ_RECEIVER_QUEUE, // name
-		false, // durable
-		false, // delete when unusued
-		false, // exclusive
-		false, // no-wait
-		nil, // arguments
+		variables.RABBITMQ_RECEIVE_QUEUE, // name
+		false,                            // durable
+		false,                            // delete when unusued
+		false,                            // exclusive
+		false,                            // no-wait
+		nil,                              // arguments
 	)
 	helpers.FailOnError(err, "Failed to declare a queue")
 
-	
 	msgs, err := ch.Consume(
 		q.Name, // queue
-		"", // consumer
-		false, // auto-ack
-		false, //exclusive
-		false, // no-local
-		false, //no-wait
-		nil, // args
+		"",     // consumer
+		false,  // auto-ack
+		false,  //exclusive
+		false,  // no-local
+		false,  //no-wait
+		nil,    // args
 	)
 	helpers.FailOnError(err, "Failed to register a consumer")
 
@@ -44,11 +47,17 @@ func Receive() {
 
 	go func() {
 		for d := range msgs {
-			message := string(d.Body[:])
 			log.Println("New item(s) received")
-			pidsArray := helpers.StringifiedArrayToArray(message)
-			scraper.Scrap(pidsArray)
-			Send("items updated")
+
+			var message types.RabbitMQMessage
+			err := json.Unmarshal(d.Body, &message)
+
+			if err != nil {
+				d.Ack(false)
+				log.Panicf("%s: %s", "Failed to parse the rabbitmq message.", err)
+			}
+			scraper.Scrap(message.AmazonColly)
+
 			d.Ack(false)
 		}
 	}()
