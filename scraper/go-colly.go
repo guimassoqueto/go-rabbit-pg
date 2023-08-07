@@ -61,6 +61,16 @@ func goColly(urlCh <-chan string, wg *sync.WaitGroup) {
 			}
 			if product.Price > 0 {
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_TABLE_NAME, product))
+			} else {
+				log.Printf("\nID: %s\n", product.Id)
+				log.Printf("\nTITLE: %s\n", product.Title)
+				log.Printf("\nCATEGORY: %s\n", product.Category)
+				log.Printf("\nREVIEWS: %d\n", product.Reviews)
+				log.Printf("\nFREESHIPPING: %v\n", product.Free_Shipping)
+				log.Printf("\nIMAGE_URL: %s\n", product.Image_Url)
+				log.Printf("\nDISCOUNT: %d\n", product.Discount)
+				log.Printf("\nPRICE: %.2f\n", product.Price)
+				log.Printf("\nPREVIOUS_PRICE: %.2f\n\n", product.Previous_Price)
 			}
 		})
 		c.Visit(url)
@@ -69,7 +79,7 @@ func goColly(urlCh <-chan string, wg *sync.WaitGroup) {
 
 func Scrap(pidsArray []string) {
 	log.Printf("Scraping %d items on Amazon, please wait...", len(pidsArray))
-	defer log.Printf("Items insert into database. Waiting for new pids...")
+	defer log.Printf("Items inserted into database. Waiting for new pids...")
 
 	var maxConcurrentRequests = variables.MAX_CONCURRENCY()
 	var wg sync.WaitGroup
