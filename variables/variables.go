@@ -9,7 +9,6 @@ import (
 	"github.com/joho/godotenv"
 )
 
-
 func getEnv(key string) string {
 	err := godotenv.Load()
 
@@ -31,15 +30,15 @@ var RABBITMQ_DEFAULT_USER = getEnv("RABBITMQ_DEFAULT_USER")
 var RABBITMQ_DEFAULT_PASS = getEnv("RABBITMQ_DEFAULT_PASS")
 var RABBITMQ_DEFAULT_HOST = getEnv("RABBITMQ_DEFAULT_HOST")
 var RABBITMQ_DEFAULT_PORT = getEnv("RABBITMQ_DEFAULT_PORT")
-var RABBITMQ_RECEIVER_QUEUE = getEnv("RABBITMQ_RECEIVER_QUEUE")
-var RABBITMQ_SENDER_QUEUE = getEnv("RABBITMQ_SENDER_QUEUE")
+var RABBITMQ_RECEIVE_QUEUE = getEnv("RABBITMQ_RECEIVE_QUEUE")
+var RABBITMQ_SEND_QUEUE = getEnv("RABBITMQ_SEND_QUEUE")
 var RABBITMQ_URL = fmt.Sprintf(
-															 "amqp://%s:%s@%s:%s", 
-															 RABBITMQ_DEFAULT_USER,
-															 RABBITMQ_DEFAULT_PASS,
-															 RABBITMQ_DEFAULT_HOST,
-															 RABBITMQ_DEFAULT_PORT,
-															)
+	"amqp://%s:%s@%s:%s",
+	RABBITMQ_DEFAULT_USER,
+	RABBITMQ_DEFAULT_PASS,
+	RABBITMQ_DEFAULT_HOST,
+	RABBITMQ_DEFAULT_PORT,
+)
 
 func MAX_CONCURRENCY() int {
 	var max = getEnv("MAX_CONCURRENCY")
@@ -48,4 +47,4 @@ func MAX_CONCURRENCY() int {
 		return 24
 	}
 	return maxConcurrency
-}															
+}
