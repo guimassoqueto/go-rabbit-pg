@@ -62,7 +62,7 @@ func Receive() {
 		}
 	}()
 
-	log.Printf(" [*] Waiting for item(s)...")
+	log.Printf("Waiting for new messages [queue: amazon-colly]. To exit press CTRL+C")
 
 	<-forever
 }
