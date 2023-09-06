@@ -1,7 +1,7 @@
 package types
 
 type Product struct {
-	Id string
+	Product_Url string
 	Title string
 	Category string
 	Reviews int
