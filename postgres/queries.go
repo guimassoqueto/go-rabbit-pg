@@ -14,7 +14,7 @@ func UpsertQuery(table string, product types.Product) string {
 
 	insert += fmt.Sprintf("INSERT INTO %s(", table)
 	values += "VALUES("
-	onConflict += "ON CONFLICT (product_url)\nDO UPDATE SET "
+	onConflict += "ON CONFLICT (url)\nDO UPDATE SET "
 
 	structType := reflect.TypeOf(product)
 	structValue := reflect.ValueOf(product)

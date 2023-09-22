@@ -1,7 +1,8 @@
 package types
 
 type Product struct {
-	Product_Url string
+	Url string
+	Afiliate_Url string
 	Title string
 	Category string
 	Reviews int

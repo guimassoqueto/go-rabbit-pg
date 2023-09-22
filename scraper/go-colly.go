@@ -49,7 +49,8 @@ func goColly(urlCh <-chan string, wg *sync.WaitGroup) {
 		c.OnScraped(func(r *colly.Response) {
 			previousPrice = elements.ComparePricesAndGetPreviousPrice(price, previousPrice)
 			product := types.Product{
-				Product_Url:    r.Request.URL.String(),
+				Url:            r.Request.URL.String(),
+				Afiliate_Url:   r.Request.URL.String() + "/?tag=promothunder-20&language=pt_BR&ref_=as_li_ss_tl",
 				Title:          title,
 				Category:       category,
 				Reviews:        reviews,
@@ -62,7 +63,7 @@ func goColly(urlCh <-chan string, wg *sync.WaitGroup) {
 			if product.Price > 0 {
 				pg.InsertProduct(pg.UpsertQuery(variables.POSTGRES_TABLE_NAME, product))
 			} else {
-				log.Printf("\nURL: %s\n", product.Product_Url)
+				log.Printf("\nURL: %s\n", product.Url)
 				log.Printf("\nTITLE: %s\n", product.Title)
 				log.Printf("\nCATEGORY: %s\n", product.Category)
 				log.Printf("\nREVIEWS: %d\n", product.Reviews)
